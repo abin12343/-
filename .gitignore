@@ -1,0 +1,27 @@
+# 系统文件
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# 日志
+logs/*
+!logs/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# 配置与密钥
+.env
+.env.*
+config/*.local.json
+config/*.secret.json
+
+# IDE
+.vscode/
+.idea/

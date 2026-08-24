@@ -1,0 +1,15 @@
+{
+  "app_name": "my-automation",
+  "log_dir": "logs",
+  "notify": {
+    "email": {
+      "smtp_host": "smtp.example.com",
+      "smtp_port": 465,
+      "username": "your-email@example.com",
+      "password_env": "SMTP_PASSWORD"
+    },
+    "webhook": {
+      "url_env": "WEBHOOK_URL"
+    }
+  }
+}
