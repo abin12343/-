@@ -1,0 +1,83 @@
+{
+  "paths": {
+    "input_dir": "D:/项目/永达对账单",
+    "translation_file": "D:/项目/永达对账单/打单费用名称中英文翻译.xlsx",
+    "quote_file": "D:/项目/永达对账单/UPS Ground报价 2026.1.15 .xlsx",
+    "output_dir": "D:/MyScripts/02-data-processing/yongda-bill-check/outputs",
+    "log_dir": "D:/MyScripts/logs"
+  },
+  "run": {
+    "amount_tolerance": 0.01,
+    "hundredweight_block": 2,
+    "hundredweight_tolerance": 0.1,
+    "round_up_lookup": true,
+    "enrich_source_in_place": true
+  },
+  "prices": {
+    "fixed_rates": {
+      "das_commercial": 2.25,
+      "das_extended": 2.85,
+      "residential_surcharge": 3.25,
+      "residential_surcharge_adjustment": 3.25,
+      "address_correction": 25.5
+    },
+    "zone_tiers": {
+      "oversize": { "2": 18.0, "3": 19.95, "4": 19.95, "5": 23.1, "6": 23.1, "7plus": 24.3 },
+      "overweight": { "2": 27.9, "3": 30.45, "4": 30.45, "5": 33.75, "6": 33.75, "7plus": 35.25 }
+    }
+  },
+  "categories": {
+    "ground_commercial": { "kind": "lookup", "block": "commercial", "note": "地面商业-运费：按分区+计费重量查报价表" },
+    "ground_residential": { "kind": "lookup", "block": "residential", "note": "地面住宅-运费：按分区+计费重量查报价表" },
+    "residential_adjustment": { "kind": "lookup_diff", "note": "住宅调整 = 住宅报价 - 商业报价（按真实账单验证）" },
+    "das_commercial": { "kind": "fixed", "note": "商业偏远附加费" },
+    "das_extended": { "kind": "fixed", "tolerance": 0.05, "note": "商业/住宅超偏远附加费（固定价，仅2-8分区）" },
+    "residential_surcharge": { "kind": "fixed", "note": "住宅附加费" },
+    "residential_surcharge_adjustment": { "kind": "fixed", "note": "住宅附加费调整" },
+    "shipping_correction": { "kind": "correction-copy", "note": "运费修正：R取自同G子单号运费行" },
+    "shipping_correction_ground": { "kind": "info", "note": "运费修正费（不处理，仅信息）" },
+    "address_correction": { "kind": "fixed", "note": "地址更正接地" },
+    "oversize": { "kind": "zone_price", "table_key": "oversize", "note": "额外附加费-超尺寸附加费" },
+    "overweight": { "kind": "zone_price", "table_key": "overweight", "note": "额外操作费-超重" },
+    "hundredweight": { "kind": "hundredweight", "note": "百磅计费运费" },
+    "info_fuel": { "kind": "info", "note": "燃油附加费：暂不核价" },
+    "info_discount": { "kind": "info", "note": "UPS折扣/优惠减免：暂不核价" },
+    "info_correction_aux": { "kind": "info", "note": "运费更正关联行（地面/燃油/折扣）：待补规则" }
+  },
+  "fee_map": {
+    "Ground Commercial": "ground_commercial",
+    "Ground Residential": "ground_residential",
+    "Ground Hundredweight": "hundredweight",
+    "Residential Adjustment": "residential_adjustment",
+    "Residential Surcharge": "residential_surcharge",
+    "Residential Surcharge Adjustment": "residential_surcharge_adjustment",
+    "Delivery Area Surcharge": "das_commercial",
+    "Delivery Area Surcharge - Extended": "das_extended",
+    "Shipping Charge Correction": "shipping_correction",
+    "Shipping Charge Correction Ground": "shipping_correction_ground",
+    "Address Correction Ground": "address_correction",
+    "Additional Handling - Length+Girth": "oversize",
+    "Additional Handling - Width": "oversize",
+    "Additional Handling-Dimension": "oversize",
+    "Additional Handling - Dimension": "oversize",
+    "AHS - Dimensions": "oversize",
+    "Addl. Handling weight": "overweight",
+    "Additional Handling-Weight": "overweight",
+    "Additional Handling - Weight": "overweight",
+    "AHS - Weight": "overweight",
+    "Shipping Charge Correction Fuel Surcharge": "info_correction_aux",
+    "Shipping Charge Correction Special Incentive Modifier": "info_correction_aux",
+    "Fuel Surcharge": "info_fuel",
+    "Fuel Surcharge Adjustment": "info_fuel",
+    "Special Incentive Modifier": "info_discount"
+  },
+  "tiantu_checks": {
+    "das_commercial": { "mark": "偏远", "note": "商业偏远附加费 -> 天图需有 偏远 标记" },
+    "das_extended": { "mark": "超偏远", "note": "超偏远附加费 -> 天图需有 超偏远 标记" },
+    "residential_surcharge": { "mark": "住宅私人", "note": "住宅附加费 -> 天图应收需有 住宅私人" },
+    "residential_surcharge_adjustment": { "mark": "住宅私人", "note": "住宅附加费调整 -> 天图应收需有 住宅私人" },
+    "oversize": { "mark": "超长", "note": "超尺寸附加费 -> 天图需有 超长 标记" },
+    "overweight": { "mark": "超重", "note": "超重附加费 -> 天图需有 超重 标记" },
+    "address_correction": { "mark": "address", "note": "地址更正 -> 天图运踪需同时有 address 与 corrected 记录" }
+  }
+}

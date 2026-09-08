@@ -1,0 +1,6 @@
+outputs/*
+!outputs/.gitkeep
+credentials.local.json
+notify.local.json
+__pycache__/
+release/

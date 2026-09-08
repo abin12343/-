@@ -1,0 +1,9 @@
+{
+  "file_id": "请填写金山文档 FILE_ID",
+  "token": "请填写金山文档 AirScript-Token",
+  "script_id": "请填写金山文档 SCRIPT_ID",
+  "sheet_name": "数据表",
+  "wecom_key": "请填写企业微信机器人 key",
+  "app_name": "天图财务-永达账单数据整理",
+  "account_id": "脚本"
+}
