@@ -585,7 +585,7 @@ def query_receivable_single(page, no):
         pass
     # 策略2：直接抓取页面上所有含住宅关键词的可见元素文本（单查结果页仅显示该单号，命中即有效）
     kw_hits = []
-    for kw in ("住宅私人", "私人住宅", "住宅地址费", "私人地址"):
+    for kw in ("住宅私人地址费", "私人住宅地址费", "住宅私人", "私人住宅", "住宅地址费"):
         try:
             loc = page.get_by_text(kw, exact=False)
             for i in range(min(loc.count(), 20)):
@@ -621,11 +621,9 @@ def query_receivable_single(page, no):
 def receivable_keyword_text(seg):
     """应收文字命中口径：包含关键词即可（先去空白兼容夹杂空格/换行），无需独立显示。"""
     compact = re.sub(r"\s+", "", seg or "")
-    for kw in ("住宅私人", "私人住宅", "住宅地址费", "私人地址"):
+    for kw in ("住宅私人地址费", "私人住宅地址费", "住宅私人", "私人住宅", "住宅地址费"):
         if kw in compact:
             return f"应收含 {kw}"
-    if "住宅" in compact and "私人" in compact:
-        return "应收含住宅/私人字样"
     return ""
 
 
