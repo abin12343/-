@@ -510,9 +510,29 @@ def query_address_single(page, no):
     opened = open_waybill_detail(page, no)
     if opened:
         click_trace_tab(page)
+        # 向下滚动运踪区域，确保长节点列表都被渲染
+        for _ in range(8):
+            try:
+                page.evaluate(
+                    """() => {
+                        const els = document.querySelectorAll('.el-scrollbar__wrap, [class*="scroll"], [class*="timeline"], .el-dialog, .el-drawer');
+                        for (const el of els) {
+                            if (el.scrollHeight > el.clientHeight) el.scrollTop += 1200;
+                        }
+                        window.scrollBy(0, 900);
+                    }"""
+                )
+                page.wait_for_timeout(500)
+            except Exception:  # noqa: BLE001
+                pass
     texts = collect_detail_texts(page)
-    close_waybill_detail(page)
     seg = "\n".join(texts)
+    if missing_text_keywords([seg], ADDRESS_KEYWORDS):
+        try:
+            dump_debug(page, default_output_dir() / "tiantu_debug", f"addr_no_{no}")
+        except Exception:  # noqa: BLE001
+            pass
+    close_waybill_detail(page)
     if not seg:
         # 兜底：没有弹层时直接抓列表行文本
         lines, _colors = collect_detail_lines(page)
