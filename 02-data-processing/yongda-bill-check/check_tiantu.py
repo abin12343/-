@@ -446,11 +446,11 @@ def open_waybill_detail(page, no):
     return False
 
 
-def click_trace_tab(page):
-    """在运单信息明细中点击“运踪信息”。"""
+def click_detail_tab(page, tab_name):
+    """在运单信息明细中点击指定页签。"""
     for _ in range(5):
         try:
-            loc = page.get_by_text("运踪信息", exact=False).first
+            loc = page.get_by_text(tab_name, exact=False).first
             if loc.count() and loc.is_visible(timeout=1500):
                 loc.click(timeout=3000)
                 page.wait_for_timeout(1800)
@@ -459,6 +459,11 @@ def click_trace_tab(page):
             pass
         page.wait_for_timeout(1200)
     return False
+
+
+def click_trace_tab(page):
+    """在运单信息明细中点击“运踪信息”。"""
+    return click_detail_tab(page, "运踪信息")
 
 
 def collect_detail_texts(page):
@@ -599,6 +604,17 @@ def query_receivable_single(page, no):
         seg = seg + "\n" + body[idxs[-1]:]
     else:
         seg = seg + "\n" + body
+    # 兜底：应收/列表未命中时，进入运单明细读“费用信息”
+    if not receivable_keyword_text(seg):
+        try:
+            opened = open_waybill_detail(page, no)
+            if opened:
+                click_detail_tab(page, "费用信息")
+                detail_texts = collect_detail_texts(page)
+                seg = seg + "\n" + "\n".join(detail_texts)
+                close_waybill_detail(page)
+        except Exception:  # noqa: BLE001
+            pass
     return n, seg, visible
 
 

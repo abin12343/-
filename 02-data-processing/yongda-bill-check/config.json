@@ -55,6 +55,7 @@
     "Delivery Area Surcharge - Extended": "das_extended",
     "Shipping Charge Correction": "shipping_correction",
     "Shipping Charge Correction Ground": "shipping_correction_ground",
+    "Address Correction": "address_correction",
     "Address Correction Ground": "address_correction",
     "Additional Handling - Length+Girth": "oversize",
     "Additional Handling - Width": "oversize",
