@@ -378,6 +378,148 @@ def scroll_to_receivable(page):
     return "应收" in page.locator("body").inner_text(timeout=8000)
 
 
+def scroll_right_max(page, steps=60):
+    """一直横向滚动到最右侧，确保运踪/地址等靠右内容被虚拟表格加载。"""
+    for _ in range(steps):
+        moved = False
+        for sel in (".vxe-table--body-wrapper", ".vxe-table--render-wrapper",
+                    ".vxe-table--layout-wrapper", ".vxe-table--main-wrapper",
+                    ".el-table__body-wrapper", ".vxe-table--header-wrapper",
+                    ".el-scrollbar__wrap"):
+            loc = page.locator(sel)
+            for i in range(loc.count()):
+                el = loc.nth(i)
+                try:
+                    if el.count() and el.is_visible():
+                        mv = el.evaluate(
+                            "(e)=>{const b=e.scrollLeft; e.scrollLeft+=900; return e.scrollLeft!==b;}"
+                        )
+                        if mv:
+                            moved = True
+                            break
+                except Exception:  # noqa: BLE001
+                    continue
+            if moved:
+                break
+        if not moved:
+            break
+        page.wait_for_timeout(400)
+
+
+def open_waybill_detail(page, no):
+    """双击包含该单号的运单行，进入“运单信息明细”。"""
+    candidates = [
+        page.locator("tr").filter(has_text=no),
+        page.locator(".vxe-body--row").filter(has_text=no),
+        page.locator(".el-table__row").filter(has_text=no),
+    ]
+    for rows in candidates:
+        for i in range(min(rows.count(), 10)):
+            try:
+                row = rows.nth(i)
+                if row.is_visible():
+                    row.dblclick(timeout=3000)
+                    page.wait_for_timeout(2500)
+                    return True
+            except Exception:  # noqa: BLE001
+                continue
+    try:
+        clicked = page.evaluate(
+            """(no) => {
+                const els = document.querySelectorAll('tr, [class*="row"], [class*="item"]');
+                for (const el of els) {
+                    const t = (el.innerText || '').replace(/\\s+/g, ' ');
+                    if (t && t.includes(no) && t.length > 20) {
+                        el.dispatchEvent(new MouseEvent('dblclick', {bubbles: true, cancelable: true, view: window}));
+                        return true;
+                    }
+                }
+                return false;
+            }""",
+            no,
+        )
+        if clicked:
+            page.wait_for_timeout(2500)
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def click_trace_tab(page):
+    """在运单信息明细中点击“运踪信息”。"""
+    for _ in range(5):
+        try:
+            loc = page.get_by_text("运踪信息", exact=False).first
+            if loc.count() and loc.is_visible(timeout=1500):
+                loc.click(timeout=3000)
+                page.wait_for_timeout(1800)
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        page.wait_for_timeout(1200)
+    return False
+
+
+def collect_detail_texts(page):
+    """收集明细弹层/抽屉/正文文本，address、corrected 可能出现在这些区域。"""
+    texts = []
+    for sel in (".el-dialog", ".el-drawer", ".vxe-modal--wrapper",
+                "[class*='detail']", "[class*='trace']", "[class*='logistics']"):
+        try:
+            loc = page.locator(sel)
+            for i in range(min(loc.count(), 10)):
+                txt = (loc.nth(i).inner_text(timeout=1500) or "").strip()
+                if txt:
+                    texts.append(txt)
+        except Exception:  # noqa: BLE001
+            continue
+    try:
+        body = page.locator("body").inner_text(timeout=8000)
+        if body.strip():
+            texts.append(body)
+    except Exception:  # noqa: BLE001
+        pass
+    return texts
+
+
+def close_waybill_detail(page):
+    """关闭运单信息明细，避免影响下一个单号。"""
+    for sel in (".el-dialog__headerbtn", ".el-drawer__close-btn",
+                ".el-drawer__header button", ".el-icon-close", "button[aria-label='Close']"):
+        try:
+            loc = page.locator(sel).first
+            if loc.count() and loc.is_visible(timeout=1000):
+                loc.click(timeout=2000)
+                page.wait_for_timeout(1200)
+                return True
+        except Exception:  # noqa: BLE001
+            continue
+    try:
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(1200)
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def query_address_single(page, no):
+    """地址更正核验：按 SOP 单查 -> 双击进运单明细 -> 运踪信息 -> 识别 address/corrected。"""
+    n = run_query_retry(page, no, wait_ms=10000)
+    page.wait_for_timeout(1500)
+    opened = open_waybill_detail(page, no)
+    if opened:
+        click_trace_tab(page)
+    texts = collect_detail_texts(page)
+    close_waybill_detail(page)
+    seg = "\n".join(texts)
+    if not seg:
+        # 兜底：没有弹层时直接抓列表行文本
+        lines, _colors = collect_detail_lines(page)
+        seg = "\n".join(ln for ln in lines if no in ln)
+    return n, [seg] if seg else [], opened
+
+
 def query_receivable_single(page, no):
     """住宅私人核验：单查后横向滚动到 应收，再用多种方式提取该单号应收相关文本。
     只要应收文字里包含 住宅私人/私人住宅/住宅地址费/私人地址 等字样即算“是”。"""
@@ -753,6 +895,16 @@ def main():
                         log(f"  应收核验 {no} -> {n} 条 | {found_text or '未找到住宅/私人字样'}")
                     except Exception as exc:  # noqa: BLE001
                         no_info[(no, mark)] = {"lines": [], "n": -1, "error": str(exc)[:150]}
+            elif mark == "address":
+                # 地址更正需看靠右的运踪/地址内容，逐单核验避免漏掉 corrected
+                for no in nos:
+                    try:
+                        reset_search(page)
+                        n, seg_lines, _visible = query_address_single(page, no)
+                        no_info[(no, mark)] = {"lines": seg_lines, "n": n}
+                        log(f"  地址更正核验 {no} -> {n} 条")
+                    except Exception as exc:  # noqa: BLE001
+                        no_info[(no, mark)] = {"lines": [], "n": -1, "error": str(exc)[:150]}
             else:
                 for start in range(0, len(nos), args.batch):
                     chunk = nos[start:start + args.batch]
@@ -773,6 +925,9 @@ def main():
                     if not found_text:
                         dump_debug(page, out_dir / "tiantu_debug", f"resi_no_{no}")
                     no_info[key] = {"lines": [seg.strip()] if seg.strip() else [], "n": n, "kw": found_text}
+                elif mark == "address":
+                    n, seg_lines, _vis = query_address_single(page, no)
+                    no_info[key] = {"lines": seg_lines, "n": n}
                 else:
                     n, lines1, colors1 = query_single(page, no)
                     no_info[key] = {
