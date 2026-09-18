@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 敏感信息
+credentials.local.json
+notify.local.json
+*.local.json
+
+# 输出文件
+outputs/*
+!outputs/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.bak
+*.log
+
+# Excel临时文件
+~$*.xlsx
+~$*.xls
+
+# 发布包
+release/dist/
+release/build/
+release/*.zip
+release/SKYE账单整理工具_EXE版/

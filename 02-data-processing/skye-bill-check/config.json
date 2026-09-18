@@ -1,0 +1,354 @@
+{
+  "paths": {
+    "input_dir": "C:/Users/TT1/Desktop/SKYE",
+    "quote_file": "C:/Users/TT1/Desktop/SKYE/20260903✳-M8123-SKYE尾程渠道报价.xlsx",
+    "translation_file": "C:/Users/TT1/Desktop/SKYE/打单费用名称中英文翻译.xlsx",
+    "stats_file": "C:/Users/TT1/Desktop/SKYE/打单问题统计表（模板）.xlsx",
+    "stats_sheet": "skye",
+    "output_dir": "D:/MyScripts/02-data-processing/skye-bill-check/outputs",
+    "log_dir": "D:/MyScripts/logs"
+  },
+  "run": {
+    "amount_tolerance": 0.2,
+    "hundredweight_tolerance": 0.2,
+    "round_up_lookup": true,
+    "enrich_source_in_place": false,
+    "backup_original": true,
+    "skip_zero_rows": true
+  },
+  "notify": {
+    "wecom_key": "",
+    "kdocs": {
+      "file_id": "",
+      "token": "",
+      "script_id": "",
+      "sheet_name": "数据表",
+      "field_mapping": {
+        "app_name": "应用名称",
+        "duration": "运行时长",
+        "run_time": "运行时间",
+        "account": "账号标识",
+        "status": "运行状态"
+      }
+    },
+    "app_name": "SKYE打单账单数据整理",
+    "account_id": "脚本"
+  },
+  "tiantu": {
+    "engine": "D:/MyScripts/02-data-processing/yongda-bill-check/check_tiantu.py",
+    "url": "https://fba.tttxex.com/#/document/waybillCollection/waybill/list",
+    "batch": 13,
+    "timeout": 300,
+    "per_batch_seconds": 60,
+    "per_waybill_seconds": 30,
+    "idle_seconds": 300,
+    "_comment": "总时长上限 = max(timeout, 批次数 × per_batch_seconds + 逐单核验条数 × per_waybill_seconds + 180)；批次数 = ceil(条数 / batch)；逐单核验条数 = 清单里期望标记为「住宅私人」的条数（引擎对这些单号一单一单读应收栏）。实测一批 45-60 秒、逐单 20-30 秒。idle_seconds = 连续多久没有输出就判卡死（真正的中止依据，总时长上限只是兜底）。"
+  },
+  "quote": {
+    "service_map": [
+      {
+        "match": "UPS-Ground-C",
+        "kind": "weight_zone",
+        "sheet": "UPS-Ground住宅",
+        "block": 0,
+        "surcharge_kind": "住宅",
+        "fallback_sheets": [
+          "UPS-Ground住宅"
+        ]
+      },
+      {
+        "match": "UPS-Ground-T01",
+        "kind": "weight_zone",
+        "sheet": "UPS-Ground商业",
+        "block": 0,
+        "surcharge_kind": "商业",
+        "fallback_sheets": [
+          "UPS-Ground住宅",
+          "UPS-Ground商业"
+        ]
+      },
+      {
+        "match": "UPS GROUND HWT",
+        "kind": "hundredweight",
+        "sheet": "UPS Ground HWT",
+        "block": 0,
+        "surcharge_kind": "商业",
+        "fallback_sheets": [
+          "UPS-Ground商业",
+          "UPS-Ground住宅"
+        ]
+      },
+      {
+        "match": "FedEx Home Delivery",
+        "kind": "weight_zone",
+        "sheet": "FedEx Home Delivery  ",
+        "block": 0,
+        "surcharge_kind": "住宅",
+        "fallback_sheets": [
+          "FedEx Home Delivery  "
+        ]
+      },
+      {
+        "match": "FedEx®Ground Multiweigh",
+        "kind": "hundredweight",
+        "sheet": "FedEx®Ground Multiweigh-1201更新",
+        "block": 0,
+        "base_block": 1,
+        "base_block_note": "同一张表里 r16 起还有一段 FedEx Ground 基础运费阶梯（LB × Zone2-9），是 block 1；<200lb 的票用它",
+        "below_hwt": "base",
+        "surcharge_kind": "商业",
+        "fallback_sheets": [
+          "FedEx Home Delivery  "
+        ]
+      },
+      {
+        "match": "MWT-01-LAX",
+        "kind": "hundredweight",
+        "sheet": "FedEx-MWT-01-LAX",
+        "block": 0,
+        "not_below_hwt_note": "本表 r16 起其实也有一段 Ground 阶梯（block 1），但本账单所有 <200lb 的 MWT 行都是合并计费的多件单行（账单 20.25 vs Ground 26.16 这种），逐行比会全是假差异，故不配 below_hwt",
+        "surcharge_kind": "商业",
+        "fallback_sheets": [
+          "FedEx Home Delivery  "
+        ]
+      },
+      {
+        "match": "MWT-01-ORD",
+        "kind": "hundredweight",
+        "sheet": "FedEx-MWT-01-JFK ORD",
+        "block": 0,
+        "not_below_hwt_note": "同上：block 1 是 Ground 阶梯，但 <200lb 的 MWT 行不能逐行比价",
+        "surcharge_kind": "商业",
+        "fallback_sheets": [
+          "FedEx Home Delivery  "
+        ]
+      }
+    ],
+    "hundredweight_blocks": [
+      {
+        "lt": 500,
+        "rate_row": "200LB+",
+        "min_price": 81
+      },
+      {
+        "lt": 1000,
+        "rate_row": "500LB+",
+        "min_price": 81
+      },
+      {
+        "lt": 99999,
+        "rate_row": "500LB+",
+        "min_price": 81
+      }
+    ],
+    "per_package_min_lb": 25,
+    "hundredweight_min_weight": 200,
+    "hundredweight_min_weight_note": "百磅档只适用于 >=200lb；低于此重量时，只有配了 below_hwt=base 的服务改查本表基础运费阶梯（仅 FedEx Multiweigh = block 1），其余不报价（留空，同人工模板）",
+    "hundredweight_discount": 0.9625,
+    "discount_min_price": false
+  },
+  "master": {
+    "sheet": "Master",
+    "header_row": 1,
+    "expected_headers": [
+      "Service Code",
+      "Order Code",
+      "Reference No",
+      "Number of Pieces",
+      "Rated Weight",
+      "Zone Code",
+      "Transportation Charge"
+    ],
+    "columns": {
+      "service_code": "C",
+      "order_code": "D",
+      "reference_no": "E",
+      "pieces": "G",
+      "weight": "H",
+      "zone": "I",
+      "amount": "J"
+    },
+    "translation": {
+      "mode": "header_row",
+      "note": "首行下插入 1 行，按英文表头名从翻译表 Sheet1 取中文（同人工模板 row2）",
+      "extra_headers": {
+        "Note": "日期",
+        "Customer ID": "客户编号",
+        "Service Code": "费用类型",
+        "Order Code": "订单号",
+        "Reference No": "参考号",
+        "Master": "跟踪号(主单号)"
+      },
+      "extra_note": "翻译表 Sheet1 没有这 6 个表头，人工模板里是手工补的，这里内置"
+    },
+    "quote_col": "K",
+    "diff_col": "L",
+    "fee_checks": [
+      {
+        "header": "Additional Handling",
+        "col": "N",
+        "zh": "异形包装",
+        "quote_item": "额外处理费-异形费",
+        "tiantu": null
+      },
+      {
+        "header": "AHS - Weight",
+        "col": "O",
+        "zh": "超重附加费",
+        "quote_item": "额外处理费-超重费",
+        "per_piece": false,
+        "tiantu": "超重"
+      },
+      {
+        "header": "AHS - Dimensions",
+        "col": "P",
+        "zh": "超尺寸附加费",
+        "quote_item": "额外处理费-超长附加费",
+        "per_piece": false,
+        "tiantu": "超长"
+      },
+      {
+        "header": "Oversize Charge",
+        "col": "R",
+        "zh": "超大尺寸费用",
+        "quote_item": null,
+        "infer_by_residential": true,
+        "surcharge_item": [
+          "超长超大费-商业",
+          "超长超大费-住宅"
+        ],
+        "tiantu": "超长"
+      },
+      {
+        "header": "Address Correction",
+        "col": "T",
+        "zh": "地址更正",
+        "quote_item": "地址修正",
+        "by_kind": true,
+        "tiantu": "address"
+      },
+      {
+        "header": "DAS Comm",
+        "col": "V",
+        "kind": "商业",
+        "zh": "商业偏远附加费",
+        "quote_item": "偏远费",
+        "by_kind": true,
+        "tiantu": "偏远"
+      },
+      {
+        "header": "DAS Resi",
+        "col": "W",
+        "kind": "住宅",
+        "zh": "住宅偏远附加费",
+        "quote_item": "偏远费",
+        "by_kind": true,
+        "tiantu": "偏远"
+      },
+      {
+        "header": "DAS Extended Comm",
+        "col": "Y",
+        "kind": "商业",
+        "zh": "商业超偏远附加费",
+        "quote_item": "超偏远费",
+        "by_kind": true,
+        "tiantu": "超偏远"
+      },
+      {
+        "header": "DAS Extended Resi",
+        "col": "Z",
+        "kind": "住宅",
+        "zh": "私人超偏远",
+        "quote_item": "超偏远费",
+        "by_kind": true,
+        "tiantu": "超偏远"
+      },
+      {
+        "header": "Residential",
+        "col": "AD",
+        "zh": "私人住宅附加费",
+        "quote_item": "住宅派送费",
+        "tiantu": "住宅私人"
+      }
+    ]
+  },
+  "pivot": {
+    "FedEx-Details": "FedEx-百磅透视",
+    "UPS-Details": "UPS-百磅透视",
+    "note": "两个 Details 页只做百磅：新建这两个 sheet 页，用 SUMIF/SUMIFS 聚合总重与账单金额，报价=档位单价×总重（含折扣与保底价），差异=报价-账单。不再往「报价差异」表写行。"
+  },
+  "details": {
+    "FedEx-Details": {
+      "service_keyword": "FedEx",
+      "amount_col": "I",
+      "amount_header": "Transportation Charge Amount",
+      "weight_col": "T",
+      "weight_header": "Rated Weight Amount",
+      "zone_col": "BK",
+      "zone_header": "Zone Code",
+      "tracking_col": "AY",
+      "tracking_header": "Original Department Reference Description",
+      "feetype_anchor_header": "Original Customer Reference",
+      "feetype_anchor_note": "费用类型列插在该表头（参考号段第一列）右侧，加工后落在 AY，与人工模板一致",
+      "insert_after_amount": 2,
+      "insert_after_tracking": 1,
+      "verify_block": {
+        "tracking_col": "AY",
+        "amount_col": "I",
+        "weight_col": "V_after",
+        "zone_col": "BN_after"
+      }
+    },
+    "UPS-Details": {
+      "service_keyword": "UPS",
+      "amount_col": "O",
+      "amount_header": "Net Amount",
+      "weight_col": "I",
+      "weight_header": "Billed Weight",
+      "zone_col": "L",
+      "zone_header": "Zone",
+      "tracking_col": "G",
+      "tracking_header": "Shipment Reference Number 1",
+      "desc_col": "N",
+      "desc_header": "Charge Description",
+      "insert_after_amount": 4,
+      "insert_after_tracking": 0,
+      "verify_block": {
+        "tracking_col": "G",
+        "amount_col": "S_after",
+        "weight_col": "I",
+        "zone_col": "L"
+      }
+    }
+  },
+  "tiantu_checks": {
+    "oversize": {
+      "mark": "超长",
+      "note": "超尺寸附加费 -> 天图需有 超长 标记"
+    },
+    "overweight": {
+      "mark": "超重",
+      "note": "超重附加费 -> 天图需有 超重 标记"
+    },
+    "das_commercial": {
+      "mark": "偏远",
+      "note": "商业偏远附加费 -> 天图需有 偏远 标记"
+    },
+    "das_residential": {
+      "mark": "偏远",
+      "note": "住宅偏远附加费 -> 天图需有 偏远 标记"
+    },
+    "das_extended": {
+      "mark": "超偏远",
+      "note": "超偏远附加费 -> 天图需有 超偏远 标记"
+    },
+    "residential": {
+      "mark": "住宅私人",
+      "note": "住宅附加费 -> 天图应收需有 住宅私人"
+    },
+    "address_correction": {
+      "mark": "address",
+      "note": "地址更正 -> 天图运踪需同时有 address 与 corrected"
+    }
+  }
+}
