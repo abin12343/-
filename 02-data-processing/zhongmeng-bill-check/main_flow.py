@@ -4,7 +4,12 @@ from __future__ import annotations
 import argparse, csv, json, sys, time
 from pathlib import Path
 
-HERE=Path(__file__).resolve().parent
+# 开发环境取源码目录；PyInstaller 环境中 __file__ 位于 _internal，
+# 配置、输出和随包引擎都位于发布根目录（exe 所在目录的上一级）。
+if getattr(sys, "frozen", False):
+    HERE=Path(sys.executable).resolve().parent.parent
+else:
+    HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE)); sys.path.insert(0,str(HERE.parent.parent/"08-common-utils"))
 from process import load_zone_index, process, process_data_list, write_checklist, write_report
 

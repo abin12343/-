@@ -91,7 +91,10 @@ def run(checklist_csv, out_csv=None, limit: int = 0,
     """
     engine = find_engine(config)
     out_csv = Path(out_csv) if out_csv else None
-    cmd = [sys.executable, str(engine), "--csv", str(checklist_csv)]
+    # 开发环境运行 .py 需要当前 Python；发布包中的天图引擎是独立 .exe，
+    # 不能再把主流程 ZhongmengTool.exe 当作 Python 解释器调用。
+    cmd = ([str(engine)] if engine.suffix.lower() == ".exe"
+           else [sys.executable, str(engine)]) + ["--csv", str(checklist_csv)]
     if limit and limit > 0:
         cmd += ["--limit", str(int(limit))]
     if config and config.get("batch"):
