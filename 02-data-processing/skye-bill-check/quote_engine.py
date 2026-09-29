@@ -428,16 +428,11 @@ class QuoteBook:
         info = ht.compute(_to_float(total_weight) or 0.0, _to_int(zone) or 0)
         if not info:
             return None
-        f = self._hwt_discount
-        if f != 1.0:
-            info["list_rate_total"] = info["rate_total"]
-            info["list_final"] = info["final"]
-            info["rate_total"] = round(info["rate_total"] * f, 2)
-            floor = info["min_price"]
-            if floor is not None and self._discount_min_price:
-                floor = round(floor * f, 2)
-            info["final"] = max(info["rate_total"], floor) if floor is not None else info["rate_total"]
-            info["discount"] = f
+        # 百磅核价口径：只使用“单价 × 总重量”。报价表中的 Min/折扣字段
+        # 不参与百磅报价，避免与使用者确认的 SOP 公式不一致。
+        info["rate_total"] = round((info.get("rate") or 0.0) * info["weight"], 2)
+        info["final"] = info["rate_total"]
+        info["discount"] = 1.0
         return info
 
     # ---------- 附加费 ----------

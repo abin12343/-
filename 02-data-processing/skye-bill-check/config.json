@@ -144,7 +144,7 @@
     "per_package_min_lb": 25,
     "hundredweight_min_weight": 200,
     "hundredweight_min_weight_note": "百磅档只适用于 >=200lb；低于此重量时，只有配了 below_hwt=base 的服务改查本表基础运费阶梯（仅 FedEx Multiweigh = block 1），其余不报价（留空，同人工模板）",
-    "hundredweight_discount": 0.9625,
+    "hundredweight_discount": 1.0,
     "discount_min_price": false
   },
   "master": {

@@ -158,13 +158,9 @@ def write_pivot_sheets(wb, res: dict, log: logging.Logger):
             quote_f = diff_f = None
             if p.rate is not None:
                 rate = _round(p.rate)
-                disc = _round(p.discount) if p.discount and p.discount != 1.0 else None
-                disc_expr = f"ROUND({rate}*{w}{i},2)"
-                if disc:
-                    disc_expr = f"ROUND({disc_expr}*{disc},2)"
-                if p.min_price is not None:
-                    disc_expr = f"MAX({disc_expr},{_round(p.min_price)})"
-                quote_f = f"={disc_expr}"
+                # 百磅报价严格按 SOP：报价表单价 × 该运单汇总总重量。
+                # 不再叠加折扣或最低收费，避免报价金额被人为放大/缩小。
+                quote_f = f"=ROUND({rate}*{w}{i},2)"
                 # 差异统一使用最直观的口径：报价 - 账单金额。
                 # 报价列已经给出本行采用的报价，差异列只引用这两列，便于使用者理解。
                 diff_f = f"={q}{i}-{b}{i}"
