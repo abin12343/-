@@ -3,5 +3,6 @@ notify.local.json
 credentials.local.json
 outputs/*
 !outputs/.gitkeep
+release/
 __pycache__/
 *.pyc
