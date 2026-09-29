@@ -1,0 +1,11 @@
+{
+  "wecom_key": "企业微信群机器人 key 或完整 webhook URL",
+  "kdocs": {
+    "file_id": "金山文档 file_id",
+    "token": "AirScript-Token",
+    "script_id": "脚本 id",
+    "sheet_name": "数据表"
+  },
+  "app_name": "中盟账单数据整理",
+  "account_id": "脚本"
+}

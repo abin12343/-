@@ -243,7 +243,8 @@ def _price_master_surcharge(
     capped = cap is not None and qp > cap
     if capped:
         qp = round(cap, 2)
-    diff = round((amount or 0) - qp, 2)
+    # 统一差异口径：报价 - 账单金额。
+    diff = round(qp - (amount or 0), 2)
     note = f"{fee_check['zh']} R={qp} 账单={amount} 差异={diff:+.2f}"
     if multiplier != 1:
         note += f"（单价{unit}×{multiplier}件）"
@@ -347,8 +348,8 @@ def process_master(
                     freight_problems.append(PriceRow(
                         row=r, sheet=sheet_name, reference_no=refno, service_code=sc,
                         fee_name="运费",
-                        amount=amount, quote=qp, diff=round(amount - qp, 2),
-                        note=f"运费 R={qp} 账单={amount} 差异={round(amount-qp,2):+.2f}",
+                        amount=amount, quote=qp, diff=round(qp - amount, 2),
+                        note=f"运费 R={qp} 账单={amount} 差异={round(qp-amount,2):+.2f}",
                         zone=zone,
                     ))
 

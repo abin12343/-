@@ -1,0 +1,22 @@
+outputs/*
+!outputs/.gitkeep
+logs/*
+!logs/.gitkeep
+credentials.local.json
+notify.local.json
+__pycache__/
+
+# 发布包：只挡产物和密钥，打包脚本 / spec / 使用说明要留档
+# （永达、SKYE 是直接 `release/` 整个忽略的，这里细一点，否则 spec 和 打包.py 就丢了）
+release/dist/
+release/build/*/
+release/*.zip
+release/环洋账单整理工具_EXE版/HuanyangTool/
+release/环洋账单整理工具_EXE版/main_flow/
+release/环洋账单整理工具_EXE版/check_tiantu/
+release/环洋账单整理工具_EXE版/outputs/
+release/环洋账单整理工具_EXE版/logs/
+release/环洋账单整理工具_EXE版/credentials.local.json
+release/环洋账单整理工具_EXE版/notify.local.json
+release/环洋账单整理工具_EXE版/*.xlsx
+release/环洋账单整理工具_EXE版/运行日志.txt

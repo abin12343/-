@@ -1,0 +1,284 @@
+{
+  "paths": {
+    "input_dir": ".",
+    "quote_file": "",
+    "translation_file": "打单费用名称中英文翻译.xlsx",
+    "stats_file": "打单问题统计表（模板）.xlsx",
+    "stats_sheet": "环洋",
+    "output_dir": "outputs",
+    "log_dir": "logs"
+  },
+  "run": {
+    "amount_tolerance": 0.05,
+    "round_up_lookup": true,
+    "skip_zero_amount": true,
+    "backup_original": true,
+    "write_formulas": true,
+    "write_formulas_allow_absolute": false
+  },
+  "bills": {
+    "summary_sheet": "成本汇总",
+    "detail_match": "成本明细",
+    "summary_match": "成本汇总",
+    "detail_hint": "账单2 = 成本明细（加工对象）；账单1 = 成本汇总（提供 主单号→客户单号）",
+    "summary_headers": [
+      "客户单号",
+      "主单号"
+    ],
+    "detail_headers": [
+      "费用名称",
+      "费用",
+      "产品名称",
+      "计费重",
+      "分区"
+    ]
+  },
+  "translation": {
+    "sheet": "Sheet1",
+    "overrides": {
+      "_comment": "重复键的人工定死项。翻译表里 'Address Correction' 有两条：无 status 的「地址更正」和 status=更新 的「拦截改派」。SOP 是按「地址更正」分类并去天图查 Address/corrected 的，所以这里定死为「地址更正」，否则 SOP 那条规则永远匹配不上。",
+      "Address Correction": "地址更正"
+    }
+  },
+  "quote": {
+    "hwt_min_weight": 200,
+    "product_aliases": {
+      "_comment": "产品名称 → 报价表 sheet 的兜底映射。留空时按归一化名自动匹配（去「美西/美中/美东」、去非字母数字、大写）。下面这三条在报价表里确实没有对应 sheet，人工确认后在这里指定即可，否则会被记入「未匹配产品」报告。",
+      "美西Fedex Fedex Ground-F": "",
+      "美东Fedex Fedex Ground-F": "",
+      "美中 FEDEX-GROUND/MTW-D": ""
+    }
+  },
+  "fee_rules": [
+    {
+      "zh": [
+        "地面商业-运费"
+      ],
+      "kind": "base",
+      "ladder": "commercial",
+      "note": "SOP：地面商业-运费 → 按 计费重 × 分区 查商业阶梯（Ground Commercial）"
+    },
+    {
+      "zh": [
+        "地面住宅-运费"
+      ],
+      "kind": "base",
+      "ladder": "residential",
+      "note": "SOP：地面住宅-运费 → 按 计费重 × 分区 查住宅阶梯（Ground Residential / Home Delivery）"
+    },
+    {
+      "zh": [
+        "住宅附加费",
+        "住宅附加费调整",
+        "私人住宅附加费",
+        "住宅调整"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "住宅附加费",
+        "住宅地址附加费",
+        "私人地址附加费",
+        "住宅"
+      ],
+      "section_prefer": [
+        "HOME DELIVERY",
+        "住宅"
+      ],
+      "tiantu": [
+        "住宅私人"
+      ],
+      "note": "SOP：天图「应收」栏必须有「住宅私人地址费」，没有就登记统计表"
+    },
+    {
+      "zh": [
+        "商业偏远附加费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "商业偏远",
+        "商业地址偏远",
+        "偏远费用"
+      ],
+      "section_prefer": [
+        "GROUND",
+        "商业"
+      ],
+      "tiantu": [
+        "偏远"
+      ],
+      "note": "SOP：天图必须有红色「偏远」"
+    },
+    {
+      "zh": [
+        "住宅偏远附加费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "住宅偏远",
+        "住宅地址偏远",
+        "偏远费用"
+      ],
+      "section_prefer": [
+        "HOME DELIVERY",
+        "住宅"
+      ],
+      "tiantu": [
+        "偏远",
+        "住宅私人"
+      ],
+      "note": "SOP：红色「偏远」+ 应收「住宅私人地址费」，二者缺一不可"
+    },
+    {
+      "zh": [
+        "住宅超偏远附加费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "住宅超偏远",
+        "住宅地址超偏远",
+        "超偏远费用"
+      ],
+      "section_prefer": [
+        "HOME DELIVERY",
+        "住宅"
+      ],
+      "tiantu": [
+        "超偏远",
+        "住宅私人"
+      ],
+      "note": "SOP：红色「超偏远」+ 应收「住宅私人地址费」，二者缺一不可"
+    },
+    {
+      "zh": [
+        "商业/住宅超偏远附加费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "住宅超偏远",
+        "超偏远费用",
+        "超偏远"
+      ],
+      "section_prefer": [
+        "HOME DELIVERY",
+        "住宅",
+        "GROUND"
+      ],
+      "tiantu": [
+        "超偏远",
+        "住宅私人"
+      ],
+      "note": "SOP 把这条和「住宅超偏远附加费」并列，同样要求红色「超偏远」+「住宅私人地址费」"
+    },
+    {
+      "zh": [
+        "商业超偏远附加费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "商业超偏远",
+        "商业地址超偏远",
+        "超偏远费用"
+      ],
+      "section_prefer": [
+        "GROUND",
+        "商业"
+      ],
+      "tiantu": [
+        "超偏远"
+      ],
+      "note": "SOP：天图必须有红色「超偏远」"
+    },
+    {
+      "zh": [
+        "超尺寸附加",
+        "额外附加费-超尺寸附加费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "超尺寸附加费"
+      ],
+      "section_prefer": [
+        "附加费名称",
+        "通用"
+      ],
+      "tiantu": [
+        "超长"
+      ],
+      "note": "SOP：按分区档取价；天图必须有红色「超长」"
+    },
+    {
+      "zh": [
+        "额外操作费-超重",
+        "超重费"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "超重附加费"
+      ],
+      "section_prefer": [
+        "附加费名称",
+        "通用"
+      ],
+      "tiantu": [
+        "超重"
+      ],
+      "note": "SOP：按分区档取价；天图必须有红色「超重」"
+    },
+    {
+      "zh": [
+        "地址更正"
+      ],
+      "kind": "surcharge",
+      "items": [
+        "更改地址费",
+        "地址更正费",
+        "更改地址"
+      ],
+      "section_prefer": [
+        "附加费名称",
+        "通用",
+        "GROUND"
+      ],
+      "tiantu": [
+        "address"
+      ],
+      "note": "SOP：天图运踪信息里要有 Address 或 corrected"
+    }
+  ],
+  "notify": {
+    "wecom_key": "",
+    "kdocs": {
+      "file_id": "",
+      "token": "",
+      "script_id": "",
+      "sheet_name": "数据表",
+      "field_mapping": {
+        "app_name": "应用名称",
+        "duration": "运行时长",
+        "run_time": "运行时间",
+        "account": "账号标识",
+        "status": "运行状态"
+      }
+    },
+    "app_name": "环洋打单账单数据整理",
+    "account_id": "脚本"
+  },
+  "tiantu": {
+    "engine": "check_tiantu.py",
+    "url": "https://fba.tttxex.com/#/document/waybillCollection/waybill/list",
+    "batch": 13,
+    "timeout": 300,
+    "per_batch_seconds": 60,
+    "per_waybill_seconds": 30,
+    "idle_seconds": 300,
+    "_comment": "总时长上限 = max(timeout, 批次数 × per_batch_seconds + 逐单核验条数 × per_waybill_seconds + 180)。批次按【期望标记】分组算：同一标记的单号每 batch 个一批；「住宅私人」和 address 是一单一单查（20-30 秒）。idle_seconds = 连续多久没输出就判卡死（真正的中止依据，总上限只是兜底）。引擎只认 credentials.local.json（永达目录那份），config 里的账号是打单系统的，登不上天图。"
+  },
+  "selftest": {
+    "limit": 6,
+    "marks": [
+      "偏远",
+      "住宅私人"
+    ],
+    "note": "天图自测：抽 limit 个单号跑两遍，逐条比对结果是否一致，并统计耗时。标志单号优先取自本次清单，够不上就用内置的。"
+  }
+}

@@ -91,10 +91,10 @@ def _hwt_accept(bill: float, info: dict, tolerance: float) -> tuple[float, bool]
     lf = info.get("list_final")
     if lf is not None and abs(lf - info["final"]) > 1e-9:
         cands.append(lf)
-    best = min(cands, key=lambda q: abs(bill - q))
+    best = min(cands, key=lambda q: abs(q - bill))
     # 按"显示的差异"（2 位小数）判定，否则浮点噪声（-0.20000000000002）
     # 会让差异正好等于容差的行也打上 ⚠，与旁边印出来的数字自相矛盾
-    return best, abs(round(bill - best, 2)) <= tolerance
+    return best, abs(round(best - bill, 2)) <= tolerance
 
 
 def build_master_index(in_path, sheet_name="Master", key_name="Reference No", val_name="Service Code") -> dict[str, str]:
@@ -267,8 +267,8 @@ def process_fedex_details(
         if abs(round((amount or 0) - qp, 2)) > tolerance:
             problems.append(DetailRow(
                 row=r, sheet=sheet_name, tracking=tracking, fee_name="运费",
-                amount=amount, quote=qp, diff=round((amount or 0) - qp, 2),
-                note=f"运费 R={qp} 账单={amount} 差异={round((amount or 0)-qp,2):+.2f}",
+                amount=amount, quote=qp, diff=round(qp - (amount or 0), 2),
+                note=f"运费 R={qp} 账单={amount} 差异={round(qp-(amount or 0),2):+.2f}",
             ))
 
     # 幂等：这次没给报价的行要擦掉上一轮留下的公式/数值，否则同一张账单重跑结果会不一样
@@ -323,20 +323,20 @@ def process_fedex_details(
         if lf is not None and abs(lf - info["final"]) > 1e-9:
             note += f" 公布价={lf}"
         if not ok:
-            note += f" ⚠差异 {round(bill-final,2):+.2f}"
+            note += f" ⚠差异 {round(final-bill,2):+.2f}"
             problems.append(DetailRow(
                 row=-1, sheet=sheet_name, tracking=tracking, fee_name="百磅计费",
-                amount=round(bill, 2), quote=final, diff=round(bill - final, 2),
+                amount=round(bill, 2), quote=final, diff=round(final - bill, 2),
                 note=(f"百磅 R={final} 账单={bill:.2f} 总重={g['weight']} "
                       f"档={info['tier']} 件数={g['count']} 倍数={bill/final:.4f} "
-                      f"差异={round(bill-final,2):+.2f}"),
+                      f"差异={round(final-bill,2):+.2f}"),
             ))
         pivot_rows.append(PivotRow(
             tracking=tracking, service_code=sc, zone=zone,
             weight=g["weight"], amount=round(bill, 2), count=g["count"],
             rate=info["rate"], min_price=info["min_price"],
             discount=info.get("discount", 1.0),
-            quote=final, diff=round(bill - final, 2),
+            quote=final, diff=round(final - bill, 2),
             tier=info["tier"], note=note,
         ))
 
@@ -474,8 +474,8 @@ def process_ups_details(
                 if abs(round(amount - qp, 2)) > tolerance:
                     problems.append(DetailRow(
                         row=r, sheet=sheet_name, tracking=tracking, fee_name=fee_zh,
-                        amount=amount, quote=qp, diff=round(amount - qp, 2),
-                        note=f"运费 R={qp} 账单={amount} 差异={round(amount-qp,2):+.2f}",
+                        amount=amount, quote=qp, diff=round(qp - amount, 2),
+                        note=f"运费 R={qp} 账单={amount} 差异={round(qp-amount,2):+.2f}",
                     ))
 
     # 幂等：这次没给报价的行要擦掉上一轮留下的公式/数值
@@ -529,20 +529,20 @@ def process_ups_details(
         if lf is not None and abs(lf - info["final"]) > 1e-9:
             note += f" 公布价={lf}"
         if not ok:
-            note += f" ⚠差异 {round(bill-final,2):+.2f}"
+            note += f" ⚠差异 {round(final-bill,2):+.2f}"
             problems.append(DetailRow(
                 row=-1, sheet=sheet_name, tracking=tracking, fee_name="百磅计费",
-                amount=round(bill, 2), quote=final, diff=round(bill - final, 2),
+                amount=round(bill, 2), quote=final, diff=round(final - bill, 2),
                 note=(f"百磅 R={final} 账单={bill:.2f} 总重={g['weight']} "
                       f"档={info['tier']} 行数={g['count']} 倍数={bill/final:.4f} "
-                      f"差异={round(bill-final,2):+.2f}"),
+                      f"差异={round(final-bill,2):+.2f}"),
             ))
         pivot_rows.append(PivotRow(
             tracking=tracking, service_code=sc, zone=zone,
             weight=g["weight"], amount=round(bill, 2), count=g["count"],
             rate=info["rate"], min_price=info["min_price"],
             discount=info.get("discount", 1.0),
-            quote=final, diff=round(bill - final, 2),
+            quote=final, diff=round(final - bill, 2),
             tier=info["tier"], note=note,
         ))
 

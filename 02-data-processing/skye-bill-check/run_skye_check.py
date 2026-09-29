@@ -153,6 +153,7 @@ def write_pivot_sheets(wb, res: dict, log: logging.Logger):
         ws.append(headers)
         w = col["总重量"]
         b = col["账单金额"]
+        q = col["报价"]
         for i, p in enumerate(rows, start=2):
             quote_f = diff_f = None
             if p.rate is not None:
@@ -161,15 +162,12 @@ def write_pivot_sheets(wb, res: dict, log: logging.Logger):
                 disc_expr = f"ROUND({rate}*{w}{i},2)"
                 if disc:
                     disc_expr = f"ROUND({disc_expr}*{disc},2)"
-                list_expr = f"ROUND({rate}*{w}{i},2)"
                 if p.min_price is not None:
                     disc_expr = f"MAX({disc_expr},{_round(p.min_price)})"
-                    list_expr = f"MAX({list_expr},{_round(p.min_price)})"
                 quote_f = f"={disc_expr}"
-                # 两种计费并存（0.9625 折扣价 / 原价），差异取离账单更近的那个候选
-                diff_f = (f"=IF(ABS({disc_expr}-{b}{i})<=ABS({list_expr}-{b}{i}),"
-                          f"{disc_expr}-{b}{i},{list_expr}-{b}{i})" if disc
-                          else f"={disc_expr}-{b}{i}")
+                # 差异统一使用最直观的口径：报价 - 账单金额。
+                # 报价列已经给出本行采用的报价，差异列只引用这两列，便于使用者理解。
+                diff_f = f"={q}{i}-{b}{i}"
             elif p.note:
                 notes.append(f"{title} 行{i} 运单{p.tracking}：{p.note}")
             vals = {

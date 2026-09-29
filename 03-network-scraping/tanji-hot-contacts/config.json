@@ -1,0 +1,12 @@
+{
+  "browser": "chrome",
+  "chrome_binary_path": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "login_url": "https://crm.tungee.com/",
+  "customer_list_url": "https://crm.tungee.com/customers/list",
+  "page_timeout_seconds": 45,
+  "search_timeout_seconds": 20,
+  "reveal_timeout_seconds": 12,
+  "retry_count": 2,
+  "checkpoint_every": 20,
+  "tesseract_path": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+}

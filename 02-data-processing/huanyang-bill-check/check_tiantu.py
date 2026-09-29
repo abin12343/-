@@ -590,7 +590,7 @@ def query_address_single(page, no):
                 pass
     texts = collect_detail_texts(page)
     seg = "\n".join(texts)
-    if not address_text_present(seg):
+    if missing_text_keywords([seg], ADDRESS_KEYWORDS):
         try:
             dump_debug(page, default_output_dir() / "tiantu_debug", f"addr_no_{no}")
         except Exception:  # noqa: BLE001
@@ -727,7 +727,7 @@ def wait_receivable_cells(page, no, seconds=25):
         page.wait_for_timeout(2000)
 
 
-def query_receivable_single(page, no, settle_s=25, keywords=None):
+def query_receivable_single(page, no, settle_s=25):
     """住宅私人核验：单查后读该行「应收」格子，命中关键字才算「是」。
 
     2026-09-16 重写（旧实现会随机把有标签的单判成「否」）：
@@ -749,10 +749,9 @@ def query_receivable_single(page, no, settle_s=25, keywords=None):
     seg = "\n".join(cells)
     visible = scroll_to_receivable(page)
     # ③ 页面上含关键词的可见元素（排除弹层里的文字）
-    keywords = tuple(keywords or RESIDENTIAL_KEYWORDS)
-    if not receivable_keyword_text(seg, keywords):
+    if not receivable_keyword_text(seg):
         kw_hits = []
-        for kw in keywords:
+        for kw in ("住宅私人地址费", "私人住宅地址费", "住宅私人", "私人住宅", "住宅地址费"):
             try:
                 loc = page.get_by_text(kw, exact=False)
                 for i in range(min(loc.count(), 20)):
@@ -773,15 +772,12 @@ def query_receivable_single(page, no, settle_s=25, keywords=None):
         if kw_hits:
             seg = seg + "\n" + "\n".join(kw_hits)
     # ④ 明细弹层的「应收费用」表
-    if not receivable_keyword_text(seg, keywords):
+    if not receivable_keyword_text(seg):
         try:
             if open_waybill_detail(page, no):
                 click_detail_tab(page, "费用信息")
                 page.wait_for_timeout(1500)
                 dialog = receivable_dialog_texts(page)
-                if keywords == POD_KEYWORDS:
-                    # POD 的“其他”费用需要继续检查费用明细中的费用备注。
-                    dialog.extend(collect_detail_texts(page))
                 if dialog:
                     seg = seg + "\n" + "\n".join(dialog)
         except Exception:  # noqa: BLE001
@@ -791,10 +787,10 @@ def query_receivable_single(page, no, settle_s=25, keywords=None):
     return n, seg, visible
 
 
-def receivable_keyword_text(seg, keywords=None):
+def receivable_keyword_text(seg):
     """应收文字命中口径：包含关键词即可（先去空白兼容夹杂空格/换行），无需独立显示。"""
     compact = re.sub(r"\s+", "", seg or "")
-    for kw in tuple(keywords or RESIDENTIAL_KEYWORDS):
+    for kw in ("住宅私人地址费", "私人住宅地址费", "住宅私人", "私人住宅", "住宅地址费"):
         if kw in compact:
             return f"应收含 {kw}"
     return ""
@@ -811,20 +807,13 @@ def mark_in_line(line, mark):
         return re.search(r"(?<!超)(?<!极)偏远", text) is not None
     if mark == "超偏远":
         return "超偏远" in text
-    if mark in ("超长", "超重", "住宅私人", "address", "pod"):
+    if mark in ("超长", "超重", "住宅私人", "address"):
         return mark in text
     return mark in text
 
 
 RED_COLOR_MARKS = ("偏远", "超偏远", "超长", "超重")
-RESIDENTIAL_KEYWORDS = ("住宅私人地址费", "私人住宅地址费", "住宅私人", "私人住宅", "住宅地址费")
-POD_KEYWORDS = ("签收单",)
 ADDRESS_KEYWORDS = ("address", "corrected")
-
-def address_text_present(text):
-    """SOP 写作 address/corrected，命中任一地址更正关键词即可。"""
-    compact=str(text or "").lower()
-    return any(keyword in compact for keyword in ADDRESS_KEYWORDS)
 
 
 def missing_text_keywords(lines, keywords):
@@ -969,7 +958,21 @@ def main():
         sys.exit(2)
 
     ts = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    from run_yongda_check import load_credentials
+
+    # 加载凭证：优先环境变量，其次 credentials.local.json
+    def load_credentials(prefix, env_user, env_pass):
+        user = os.environ.get(env_user, "")
+        password = os.environ.get(env_pass, "")
+        fp = BASE_DIR / "credentials.local.json"
+        if fp.exists() and (not user or not password):
+            try:
+                data = json.loads(fp.read_text(encoding="utf-8"))
+                user = user or data.get(f"{prefix}_user", "")
+                password = password or data.get(f"{prefix}_pass", "")
+            except Exception:  # noqa: BLE001
+                pass
+        return user, password
+
     user, password = load_credentials("tiantu", "TIANTU_USER", "TIANTU_PASS")
     if user:
         log("已读取本地凭证，将自动登录")
@@ -1091,14 +1094,13 @@ def main():
 
         for mark in order:
             nos = groups[mark]
-            if mark in ("住宅私人", "pod"):
+            if mark == "住宅私人":
                 # 应收列在右侧，横向滚动加载，需要逐单核对
-                keywords = POD_KEYWORDS if mark == "pod" else RESIDENTIAL_KEYWORDS
                 for no in nos:
                     try:
                         reset_search(page)
-                        n, seg, visible = query_receivable_single(page, no, keywords=keywords)
-                        found_text = receivable_keyword_text(seg, keywords)
+                        n, seg, visible = query_receivable_single(page, no)
+                        found_text = receivable_keyword_text(seg)
                         if not found_text:
                             dump_debug(page, out_dir / "tiantu_debug", f"resi_no_{no}")
                             log(f"  应收未命中，已保存调试截图/页面: outputs/tiantu_debug/resi_no_{no}")
@@ -1134,10 +1136,9 @@ def main():
                 continue
             try:
                 reset_search(page)
-                if mark in ("住宅私人", "pod"):
-                    keywords = POD_KEYWORDS if mark == "pod" else RESIDENTIAL_KEYWORDS
-                    n, seg, vis = query_receivable_single(page, no, keywords=keywords)
-                    found_text = receivable_keyword_text(seg, keywords)
+                if mark == "住宅私人":
+                    n, seg, vis = query_receivable_single(page, no)
+                    found_text = receivable_keyword_text(seg)
                     if not found_text:
                         dump_debug(page, out_dir / "tiantu_debug", f"resi_no_{no}")
                     no_info[key] = {"lines": [seg.strip()] if seg.strip() else [], "n": n, "kw": found_text}
@@ -1165,12 +1166,12 @@ def main():
             n = r.get("n", -1)
             missing_kws = []
             if mark == "address":
-                # SOP 的 address/corrected 表示任一关键词命中即可。
+                # 地址更正需同时确认 address 与 corrected 两个关键词
                 if not lines:
                     appear = "未定位" if n == 1 else f"异常({n}条)"
                 else:
-                    appear = "是" if address_text_present("\n".join(lines)) else "否"
-                    if appear == "否": missing_kws = list(ADDRESS_KEYWORDS)
+                    missing_kws = missing_text_keywords(lines, ADDRESS_KEYWORDS)
+                    appear = "是" if not missing_kws else "否"
             else:
                 appear = resolve_appearance(
                     no, mark, n, lines, r.get("colors", []), kw=r.get("kw")

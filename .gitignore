@@ -25,3 +25,44 @@ config/*.secret.json
 # IDE
 .vscode/
 .idea/
+
+# 本地凭据与登录态（严禁提交）
+credentials.local.json
+notify.local.json
+cookies.pkl
+**/credentials.local.json
+**/notify.local.json
+**/cookies.pkl
+
+# 运行结果、业务数据与调试产物
+output/
+outputs/
+**/output/
+**/outputs/
+tmp/
+.workbuddy-ai/
+.codex/
+*.log
+*.xlsx
+*.xls
+*.csv
+*.html
+*.png
+*.jpg
+*.jpeg
+*.zip
+
+# PyInstaller/本地发布产物
+build/
+dist/
+**/build/
+**/dist/
+**/release/*/_internal/
+
+# 本地元数据
+se-metadata.json
+start-claude.bat
+
+# 旧版探迹实验脚本包含历史调试代码/硬编码登录信息，不纳入同步
+03-network-scraping/tanji-scraper/
+WORKSPACE_ANALYSIS.md

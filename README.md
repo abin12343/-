@@ -31,3 +31,12 @@
 2. 脚本头部写清：用途、依赖、运行方式。
 3. 有配置需求时，参照 `config/config.example.json` 创建本地配置。
 4. 涉及删除、覆盖等危险操作的脚本，先进入试运行（dry-run）模式或由用户确认。
+5. **新脚本直接 `from autolib import ...`**（08-common-utils/autolib），不要复制
+   yongda-bill-check 那批私有实现；通用模式就在那里。
+
+## 现有业务模块
+
+| 目录 | 说明 |
+|---|---|
+| `02-data-processing/yongda-bill-check/` | 永达 UPS 账单对账（首套业务，3415 行私有实现） |
+| `02-data-processing/skye-bill-check/`   | SKYE 账单对账（按 SOP 自动化，复用 autolib + 永达的天图引擎） |

@@ -1,0 +1,35 @@
+{
+  "paths": {
+    "input_dir": "D:/你的/输入目录",
+    "output_dir": "outputs",
+    "log_dir": "logs"
+  },
+
+  "run": {
+    "dry_run": false,
+    "backup_source": true
+  },
+
+  "credentials": {
+    "demo_user": "${DEMO_USER}",
+    "demo_pass": "${DEMO_PASS}"
+  },
+
+  "notify": {
+    "app_name": "我的自动化脚本",
+    "wecom_key": "${WECOM_KEY}",
+    "kdocs": {
+      "file_id": "",
+      "token": "${KDOCS_TOKEN}",
+      "script_id": "",
+      "sheet_name": "数据表",
+      "field_mapping": {
+        "app_name": "应用名称",
+        "duration": "运行时长",
+        "run_time": "运行时间",
+        "account": "账号标识",
+        "status": "运行状态"
+      }
+    }
+  }
+}

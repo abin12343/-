@@ -1,0 +1,7 @@
+.venv/
+output/
+evidence/
+*.log
+*.jsonl
+*.tmp.xlsx
+

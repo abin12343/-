@@ -1,0 +1,7 @@
+config.local.json
+notify.local.json
+credentials.local.json
+outputs/*
+!outputs/.gitkeep
+__pycache__/
+*.pyc
