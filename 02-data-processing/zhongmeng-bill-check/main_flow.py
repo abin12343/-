@@ -73,9 +73,11 @@ def _pick_data_list(initial):
         import tkinter as tk
         from tkinter import filedialog
         root=tk.Tk(); root.withdraw(); root.attributes("-topmost", True)
+        root.update()
         selected=filedialog.askopenfilename(
             initialdir=str(initial), title="选择中盟数据列表文件",
             filetypes=(("Excel 文件", "*.xlsx"), ("所有文件", "*.*")),
+            parent=root,
         )
         root.destroy()
         return Path(selected) if selected else None
@@ -100,6 +102,7 @@ def main(argv=None):
             return 2
         input_dir=picked
     bills=_bills(input_dir,args.bill)
+    print(f"[选择] 已选择账单文件夹：{input_dir}；发现账单 {len(bills)} 份")
     quote=Path(args.quote or paths.get("quote_file", "")); out=Path(paths.get("output_dir",HERE/"outputs")); out.mkdir(parents=True,exist_ok=True)
     logdir=Path(paths.get("log_dir",HERE/"logs")); logdir.mkdir(parents=True,exist_ok=True); runlog=logdir/f"zhongmeng_{time.strftime('%Y%m%d_%H%M%S')}.log"; start=time.time()
     def emit(msg):
@@ -109,6 +112,7 @@ def main(argv=None):
     if not bills or not quote.is_file(): emit(f"[失败] 账单数={len(bills)}，报价表={quote}"); return 2
     data_list=args.data_list
     if not data_list and not args.no_dialog:
+        print("[下一步] 请在随后弹出的窗口中选择本批次的数据列表.xlsx")
         picked=_pick_data_list(input_dir.parent if input_dir.name == "中盟账单" else input_dir)
         if picked: data_list=str(picked)
         else:
