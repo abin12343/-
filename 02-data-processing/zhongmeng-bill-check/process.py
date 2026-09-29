@@ -61,7 +61,6 @@ class QuoteBook:
             sn=self.sheet("UPS@Gr-GLA商业")
         ws = self.wb[sn] if sn else None
         if ws is None: return None
-        # 真实报价表固定版式：附加费标题在 B/C，分区价在 E:H。
         fee_rows={"住宅旺季附加费":158,"住宅地址":158,"超尺寸附加费":159,"超尺寸体积":159,"超重附加费":160,
                   "不规则包装":162,"超大件":163,"补收住宅超大件":163,"商业超大件":164}
         matched=None
@@ -72,7 +71,6 @@ class QuoteBook:
             zc=self._zone_col(zone)
             return round(num(ws.cell(matched,zc).value),2) if zc and num(ws.cell(matched,zc).value) is not None else None
         if norm("2类偏远") in target: return round(num(ws.cell(168,5).value),2)
-        # SOP 运费1/2：用计费重精确匹配报价表 C 列，按分区 2-8 选择 D:J。
         w = num(weight)
         zc=self._base_zone_col(zone)
         if w is not None and zc:
@@ -83,6 +81,62 @@ class QuoteBook:
                     price=num(ws.cell(r,zc).value)
                     return round(price,2) if price is not None else None
         return None
+
+
+def _formula_sheet_name(source_sheet: str) -> str:
+    """Return a short, stable hidden-sheet name safe for Excel formulas."""
+    safe = re.sub(r"[^0-9A-Za-z\u4e00-\u9fff]+", "_", str(source_sheet or "报价表"))
+    return ("_中盟报价_" + safe)[:31]
+
+
+def _prepare_formula_quote_sheets(wb, quote_path, channels):
+    """Copy the selected quote tables into hidden sheets in the output workbook.
+
+    Data-list U/V formulas must continue to work after the data list is sent to
+    another user.  External workbook links are unreliable in that situation, so
+    the small quote tables are embedded as hidden values and formulas reference
+    those local sheets instead.
+    """
+    qb = QuoteBook(quote_path)
+    mapping = {}
+    for channel in sorted({str(x).strip() for x in channels if x not in (None, "")}):
+        source = qb.sheet(channel)
+        if not source:
+            continue
+        hidden_name = _formula_sheet_name(source)
+        if hidden_name in wb.sheetnames:
+            out = wb[hidden_name]
+            # Rebuild values on rerun so a newly selected quote file replaces
+            # the prior embedded table without leaving stale rows behind.
+            for row in out.iter_rows():
+                for cell in row:
+                    cell.value = None
+        else:
+            out = wb.create_sheet(hidden_name)
+        src = qb.wb[source]
+        for row in src.iter_rows(min_row=1, max_row=src.max_row,
+                                 min_col=1, max_col=min(src.max_column, 10)):
+            for cell in row:
+                out.cell(cell.row, cell.column).value = cell.value
+        out.sheet_state = "hidden"
+        mapping[norm(channel)] = hidden_name
+    return mapping
+
+
+def _data_list_formulas(row, channel, zone_col, weight_col, amount_col, quote_sheet):
+    """Build portable U/V formulas for one data-list row."""
+    if not quote_sheet:
+        return None, None
+    z = col_letter(zone_col)
+    w = col_letter(weight_col)
+    a = col_letter(amount_col)
+    # Quote sheets use B as the integer-pound key and D:J as Zone 2..8.
+    # CEILING mirrors the original SOP template and handles fractional weights.
+    qref = f"'{quote_sheet}'!$B$4:$J$153"
+    u = (f'=IF(OR({w}{row}="",{z}{row}=""),"",'
+         f'IFERROR(VLOOKUP(CEILING({w}{row},1),{qref},{z}{row}+1,FALSE),""))')
+    v = f'=IF(U{row}="","",U{row}-{a}{row})'
+    return u, v
 
 RULES = [
  ("1类偏远", "偏远", "fixed", "remote_1"), ("超尺寸附加费", "超长", "quote", None),
@@ -114,7 +168,7 @@ def _header_col(ws, names, fallback):
     return fallback
 
 def process_data_list(path, quote_path, dry_run=False):
-    """按 SOP 运费2处理数据列表并写数值，避免交付文件依赖外部公式链接。"""
+    """按 SOP 处理数据列表，并用本表内置报价页生成 U/V 公式。"""
     if not path or not Path(path).is_file(): return 0
     wb=load_workbook(path, data_only=False)
     qb=QuoteBook(quote_path); changed=0
@@ -124,21 +178,20 @@ def process_data_list(path, quote_path, dry_run=False):
         zone_col=_header_col(ws,("分区","区域"),5)
         weight_col=_header_col(ws,("计费重","单件计费重"),8)
         amount_col=_header_col(ws,("金额","费用金额"),11)
+        channels = [ws.cell(r, channel_col).value for r in range(2, ws.max_row + 1)]
+        formula_sheets = _prepare_formula_quote_sheets(wb, quote_path, channels) if not dry_run else {}
         for r in range(2, ws.max_row+1):
             if fee_col and norm(ws.cell(r,fee_col).value) != norm("运费"): continue
             channel,zone,weight=ws.cell(r,channel_col).value,ws.cell(r,zone_col).value,ws.cell(r,weight_col).value
-            # 清掉旧版本留下的外部链接公式，即使本行这次因数据缺失无法匹配。
             if not dry_run:
-                ws.cell(r,21).value=None
-                ws.cell(r,22).value=None
+                qsheet = formula_sheets.get(norm(channel))
+                u, v = _data_list_formulas(r, channel, zone_col, weight_col, amount_col, qsheet)
+                ws.cell(r,21).value = u
+                ws.cell(r,22).value = v
             if channel in (None,""): continue
             rate=qb.lookup(channel,"运费",zone,weight)
             if rate is None: continue
             original=num(ws.cell(r,amount_col).value)
-            if not dry_run:
-                ws.cell(r,21).value=round(rate,2)
-                if original is not None:
-                    ws.cell(r,22).value=round(rate-original,2)
             changed+=1
     if changed and not dry_run:
         backup(path)
@@ -201,7 +254,7 @@ def process(path, quote_path, cfg, log=print, dry_run=False, zone_index=None):
         if mark and no:
             for one_mark in (mark if isinstance(mark,list) else [mark]):
                 tasks.append({"row": r, "no": no, "cat": name, "fee": fee, "mark": one_mark, "amount": amount, "note": "按中盟SOP天图核验"})
-    # 兼容账单工作簿内嵌的数据列表；单独导出的数据列表由 main_flow 调用同一规则处理。
+    # 兼容账单工作簿内嵌的数据列表；同样写本地公式，避免外链失效。
     for dws in wb.worksheets:
         if "数据列表" not in dws.title: continue
         fee_col=_header_col(dws,("费用名","费用名称"),None)
@@ -209,15 +262,18 @@ def process(path, quote_path, cfg, log=print, dry_run=False, zone_index=None):
         zone_col=_header_col(dws,("分区","区域"),5)
         weight_col=_header_col(dws,("计费重","单件计费重"),8)
         amount_col=_header_col(dws,("金额","费用金额"),11)
+        channels = [dws.cell(r, channel_col).value for r in range(2, dws.max_row + 1)]
+        formula_sheets = _prepare_formula_quote_sheets(wb, quote_path, channels) if not dry_run else {}
         for r in range(2, dws.max_row + 1):
             if fee_col and norm(dws.cell(r,fee_col).value) != norm("运费"): continue
             channel, zone, weight = dws.cell(r, channel_col).value, dws.cell(r, zone_col).value, dws.cell(r, weight_col).value
             if channel in (None, "") or num(weight) is None: continue
             rate = qb.lookup(channel, "运费", zone, weight)
-            if rate is not None:
-                dws.cell(r, 21).value = rate
-                k = num(dws.cell(r, amount_col).value)
-                if k is not None: dws.cell(r, 22).value = round(rate-k, 2)
+            if not dry_run:
+                qsheet = formula_sheets.get(norm(channel))
+                u, v = _data_list_formulas(r, channel, zone_col, weight_col, amount_col, qsheet)
+                dws.cell(r, 21).value = u
+                dws.cell(r, 22).value = v
     stats["天图任务"] = len(tasks)
     if not dry_run: wb.save(path)
     return stats, tasks, bkp
