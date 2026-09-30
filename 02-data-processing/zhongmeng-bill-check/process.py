@@ -200,8 +200,8 @@ def process_data_list(path, quote_path, dry_run=False):
 
 def process(path, quote_path, cfg, log=print, dry_run=False, zone_index=None):
     path, quote_path = Path(path), Path(quote_path)
-    if not dry_run and cfg.get("run", {}).get("backup_original", True): bkp = backup(path)
-    else: bkp = None
+    # 当前 SOP 不要求保留原账单副本，直接在所选账单上回填结果。
+    bkp = None
     wb = load_workbook(path); ws = wb.active; qb = QuoteBook(quote_path)
     C = cfg.get("columns", {}); ci = {k: col(v) for k,v in C.items()}
     for key,title in (("zone","分区"),("quote","报价表"),("diff","差异")): ws.cell(1,ci[key]).value=title
