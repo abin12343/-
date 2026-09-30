@@ -194,7 +194,7 @@ def process_data_list(path, quote_path, dry_run=False):
             original=num(ws.cell(r,amount_col).value)
             changed+=1
     if changed and not dry_run:
-        backup(path)
+        # 按当前 SOP 直接更新使用者选择的数据列表，不生成备份副本。
         wb.save(path)
     return changed
 

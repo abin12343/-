@@ -104,6 +104,37 @@ def _pick_quote(initial):
         return Path(selected) if selected else None
     except Exception:
         return None
+
+def _pick_stats(initial, sheet_name="中盟"):
+    """按 SOP 让使用者选择本批次要登记的问题统计表。"""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog, messagebox
+        root=tk.Tk(); root.withdraw(); root.attributes("-topmost", True); root.update()
+        selected=filedialog.askopenfilename(
+            initialdir=str(initial), title="请选择打单问题统计表",
+            filetypes=(("Excel 文件", "*.xlsx"), ("所有文件", "*.*")), parent=root,
+        )
+        root.destroy()
+        if not selected:
+            return None
+        chosen=Path(selected)
+        # 统计表必须包含中盟工作表，避免把账单/数据列表误选进去。
+        try:
+            from openpyxl import load_workbook
+            wb=load_workbook(chosen, read_only=True, data_only=True)
+            valid=sheet_name in wb.sheetnames
+            wb.close()
+        except Exception:
+            valid=False
+        if not valid:
+            root=tk.Tk(); root.withdraw(); root.attributes("-topmost", True)
+            messagebox.showwarning("统计表格式不正确", f"所选文件没有“{sheet_name}”工作表，请重新运行并选择正确的统计表。", parent=root)
+            root.destroy()
+            return None
+        return chosen
+    except Exception:
+        return None
 def main(argv=None):
     ap=argparse.ArgumentParser(description="中盟账单数据整理")
     ap.add_argument("--bill",action="append",help="账单，可重复传入；不传则递归批量处理 input_dir 下的 US*.xlsx")
@@ -111,7 +142,7 @@ def main(argv=None):
     ap.add_argument("--pick-folder",action="store_true",help="弹窗选择账单文件夹（默认行为，保留此参数用于兼容）")
     ap.add_argument("--no-dialog",action="store_true",help="不弹窗，直接使用 --input-dir 或配置目录")
     ap.add_argument("--quote"); ap.add_argument("--data-list",help="数据列表 xlsx（C列运单、E列分区）")
-    ap.add_argument("--stats"); ap.add_argument("--config"); ap.add_argument("--dry-run",action="store_true")
+    ap.add_argument("--stats", help="打单问题统计表 xlsx"); ap.add_argument("--config"); ap.add_argument("--dry-run",action="store_true")
     ap.add_argument("--skip-tiantu",action="store_true"); ap.add_argument("--selftest",action="store_true"); ap.add_argument("--tiantu-limit",type=int,default=0)
     args=ap.parse_args(argv); cfg=cfg_load(args.config); paths=cfg.get("paths",{}); input_dir=Path(args.input_dir or paths.get("input_dir","."))
     # SOP：系统导出步骤无需脚本操作；正常启动时只让使用者选择装有全部账单的文件夹。
@@ -151,6 +182,16 @@ def main(argv=None):
         if not found and input_dir.parent != input_dir:
             found=next((p for p in input_dir.parent.glob("*数据列表*.xlsx") if not p.name.startswith("~$")),None)
         data_list=str(found) if found else None
+    stats_sheet=paths.get("stats_sheet", "中盟")
+    stats_path=args.stats
+    if not stats_path and not args.no_dialog:
+        print("[下一步] 请在随后弹出的窗口中选择本批次的打单问题统计表.xlsx")
+        picked_stats=_pick_stats(input_dir.parent if input_dir.name == "中盟账单" else input_dir, stats_sheet)
+        if picked_stats: stats_path=str(picked_stats)
+        else:
+            print("[提示] 未选择统计表，本次跳过问题登记。")
+    if not stats_path and args.no_dialog:
+        stats_path=paths.get("stats_file")
     zone_index=load_zone_index(data_list) if data_list else {}; all_tasks=[]; force_items=[]; totals={}; stages=[]
     if not zone_index:
         emit("[失败] 未找到可用的数据列表（需 C 列客户单号、E 列分区）。请将数据列表放入所选账单文件夹或其上级目录。")
@@ -182,7 +223,6 @@ def main(argv=None):
             emit("[天图] 开始核验；若未配置凭据，将等待浏览器手动登录")
             from autolib.tiantu import run
             result=run(checklist,out/"天图核验结果.csv",args.tiantu_limit,config=_engine_cfg(cfg))
-        stats_path=args.stats or paths.get("stats_file"); stats_sheet=paths.get("stats_sheet","中盟")
         if not args.dry_run and force_items: _append_stats_items(stats_path,stats_sheet,force_items,emit)
         if result and not args.dry_run: missing_to_stats(stats_path,stats_sheet,result,checklist,emit)
         report=write_report(out/f"中盟运行报告_{time.strftime('%Y%m%d_%H%M%S')}.txt",totals,all_tasks,checklist); emit(f"[报告] {report}")

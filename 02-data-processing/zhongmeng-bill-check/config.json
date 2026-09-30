@@ -8,7 +8,7 @@
     "log_dir": "D:/MyScripts/logs"
   },
   "columns": {"fee": "A", "amount": "F", "waybill": "I", "weight": "K", "channel": "L", "remark": "N", "pieces": "O", "zone": "Q", "quote": "R", "diff": "S"},
-  "run": {"amount_tolerance": 0.05, "backup_original": true, "skip_zero_amount": true},
+  "run": {"amount_tolerance": 0.05, "backup_original": false, "skip_zero_amount": true},
   "quote": {"address_correction": 29, "residential_rebill": 3.7, "reuse_label": 4.4, "photo": 5, "pod": 3, "remote_1": 4},
   "tiantu": {"engine": "../yongda-bill-check/check_tiantu.py", "url": "https://fba.tttxex.com/#/document/waybillCollection/waybill/list", "batch": 13, "timeout": 300, "idle_seconds": 300},
   "notify": {"wecom_key": "", "app_name": "中盟账单数据整理", "account_id": "脚本", "kdocs": {"file_id": "", "token": "", "script_id": "", "sheet_name": "数据表"}},
