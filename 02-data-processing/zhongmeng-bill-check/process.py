@@ -130,11 +130,13 @@ def _data_list_formulas(row, channel, zone_col, weight_col, amount_col, quote_sh
     z = col_letter(zone_col)
     w = col_letter(weight_col)
     a = col_letter(amount_col)
-    # Quote sheets use B as the integer-pound key and D:J as Zone 2..8.
-    # CEILING mirrors the original SOP template and handles fractional weights.
-    qref = f"'{quote_sheet}'!$B$4:$J$153"
+    # Quote sheets use C as the kg billable-weight key and D:J as Zone 2..8.
+    # Match the data-list kg weight exactly, as QuoteBook.lookup does. The old
+    # formula rounded this value to an integer pound and looked in column B,
+    # which selected the wrong rate row.
+    qsheet = f"'{quote_sheet}'"
     u = (f'=IF(OR({w}{row}="",{z}{row}=""),"",'
-         f'IFERROR(VLOOKUP(CEILING({w}{row},1),{qref},{z}{row}+1,FALSE),""))')
+         f'IFERROR(INDEX({qsheet}!$D$4:$J$153,MATCH({w}{row},{qsheet}!$C$4:$C$153,0),{z}{row}-1),""))')
     v = f'=IF(U{row}="","",U{row}-{a}{row})'
     return u, v
 
