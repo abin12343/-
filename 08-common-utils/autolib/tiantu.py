@@ -124,6 +124,12 @@ def _result_dirs(engine: Path) -> list[Path]:
     cand = engine.parent / "outputs"
     if cand.is_dir():
         dirs.append(cand)
+    # 冻结版引擎位于发布根/check_tiantu，结果实际写在发布根/outputs。
+    # 旧逻辑只查引擎同级目录，导致引擎已完成但主流程误报“未生成结果”。
+    if engine.suffix.lower() == ".exe":
+        root_out = engine.parent.parent / "outputs"
+        if root_out.is_dir():
+            dirs.append(root_out)
     try:
         cfg = json.loads((engine.parent / "config.json").read_text(encoding="utf-8"))
         p = Path(cfg["paths"]["output_dir"])

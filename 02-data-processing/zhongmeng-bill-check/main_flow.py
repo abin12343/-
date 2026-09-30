@@ -179,6 +179,7 @@ def main(argv=None):
                 return 1
             emit("[天图自检] 契约检查通过")
         if checklist and not args.skip_tiantu:
+            emit("[天图] 开始核验；若未配置凭据，将等待浏览器手动登录")
             from autolib.tiantu import run
             result=run(checklist,out/"天图核验结果.csv",args.tiantu_limit,config=_engine_cfg(cfg))
         stats_path=args.stats or paths.get("stats_file"); stats_sheet=paths.get("stats_sheet","中盟")
