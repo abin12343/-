@@ -29,7 +29,20 @@ def cfg_load(path=None):
     if notify_local.exists(): cfg["notify"]=_merge(cfg.get("notify",{}),json.loads(notify_local.read_text(encoding="utf-8")))
     return cfg
 def _engine_cfg(cfg):
-    tc=dict(cfg.get("tiantu",{})); p=Path(tc.get("engine", "")); tc["engine"]=str((HERE/p).resolve()) if not p.is_absolute() else str(p); return tc
+    tc=dict(cfg.get("tiantu",{}))
+    configured=Path(tc.get("engine", "")).expanduser()
+    if getattr(sys, "frozen", False):
+        # The release package always carries its own engine.  Do not resolve
+        # the development config (../yongda-bill-check/...) against the user's
+        # desktop; that was the cause of the missing-engine error in EXE mode.
+        bundled=HERE / "check_tiantu" / "check_tiantu.exe"
+        if bundled.is_file():
+            tc["engine"] = str(bundled)
+        else:
+            tc["engine"] = str((HERE / configured).resolve()) if not configured.is_absolute() else str(configured)
+    else:
+        tc["engine"] = str((HERE / configured).resolve()) if not configured.is_absolute() else str(configured)
+    return tc
 def _append_stats_items(stats_file,sheet,items,log=print):
     if not stats_file or not Path(stats_file).is_file() or not items: return 0
     from openpyxl import load_workbook
