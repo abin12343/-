@@ -8,6 +8,11 @@ from pathlib import Path
 # 配置、输出和随包引擎都位于发布根目录（exe 所在目录的上一级）。
 if getattr(sys, "frozen", False):
     HERE=Path(sys.executable).resolve().parent.parent
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
 else:
     HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE)); sys.path.insert(0,str(HERE.parent.parent/"08-common-utils"))
@@ -83,6 +88,22 @@ def _pick_data_list(initial):
         return Path(selected) if selected else None
     except Exception:
         return None
+
+
+def _pick_quote(initial):
+    """报价表属于每台电脑/每个批次的输入，配置路径失效时重新选择。"""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root=tk.Tk(); root.withdraw(); root.attributes("-topmost", True); root.update()
+        selected=filedialog.askopenfilename(
+            initialdir=str(initial), title="请选择中盟尾程报价表 xlsx",
+            filetypes=(("Excel 文件", "*.xlsx"), ("所有文件", "*.*")), parent=root,
+        )
+        root.destroy()
+        return Path(selected) if selected else None
+    except Exception:
+        return None
 def main(argv=None):
     ap=argparse.ArgumentParser(description="中盟账单数据整理")
     ap.add_argument("--bill",action="append",help="账单，可重复传入；不传则递归批量处理 input_dir 下的 US*.xlsx")
@@ -103,7 +124,13 @@ def main(argv=None):
         input_dir=picked
     bills=_bills(input_dir,args.bill)
     print(f"[选择] 已选择账单文件夹：{input_dir}；发现账单 {len(bills)} 份")
-    quote=Path(args.quote or paths.get("quote_file", "")); out=Path(paths.get("output_dir",HERE/"outputs")); out.mkdir(parents=True,exist_ok=True)
+    quote=Path(args.quote or paths.get("quote_file", ""))
+    if not quote.is_file() and not args.no_dialog and not args.quote:
+        print(f"[提示] 配置中的报价表不存在：{quote}")
+        print("[下一步] 请在随后弹出的窗口中选择本批次的中盟尾程报价表.xlsx")
+        picked_quote=_pick_quote(input_dir.parent if input_dir.name == "中盟账单" else input_dir)
+        if picked_quote: quote=picked_quote
+    out=Path(paths.get("output_dir",HERE/"outputs")); out.mkdir(parents=True,exist_ok=True)
     logdir=Path(paths.get("log_dir",HERE/"logs")); logdir.mkdir(parents=True,exist_ok=True); runlog=logdir/f"zhongmeng_{time.strftime('%Y%m%d_%H%M%S')}.log"; start=time.time()
     def emit(msg):
         print(msg)
